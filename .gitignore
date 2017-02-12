@@ -1,0 +1,6 @@
+*.pdf
+*.xlsx
+*.model
+*.pyc
+__pycache__/
+text8
