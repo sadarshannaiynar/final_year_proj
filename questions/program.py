@@ -5,23 +5,29 @@ from nltk.stem import WordNetLemmatizer
 from pandas import DataFrame
 from keras.models import Sequential
 from keras.layers import Dense, Dropout, Activation, LSTM
-from sklearn.cross_validation import train_test_split
+from sklearn.model_selection import train_test_split
 import numpy as np
 import random
 
 random.seed(1000)
 
-target_catgories = []
+target_categories = []
 category_data = []
 
 for data in open('questions.txt', 'r'):
     data = data.split(' ', 1)
     prefix = data[0].split(':')
-    target_catgories.append(prefix[0] + '_' + prefix[1])
+    target_categories.append(prefix[0] + '_' + prefix[1])
 
-target_catgories = list(set(target_catgories))
+target_categories = sorted(list(set(target_categories)))
 
-for category in target_catgories:
+cat = open('categories.txt', 'w')
+
+for i in target_categories:
+    cat.write(i + '\n')
+cat.close()
+
+for category in target_categories:
     category_data.append([category, category.split('_')[0], 0])
 
 question_categories = DataFrame(
@@ -34,10 +40,10 @@ def update_categories(category):
     question_categories.set_value(idx, 'Questions', f + 1)
 
 
-def to_category_vector(categories, target_catgories):
-    vector = np.zeros(len(target_catgories)).astype(float)
-    for i in range(len(target_catgories)):
-        if target_catgories[i] in categories:
+def to_category_vector(categories, target_categories):
+    vector = np.zeros(len(target_categories)).astype(int)
+    for i in range(len(target_categories)):
+        if target_categories[i] in categories:
             vector[i] = 1.0
     return vector
 
@@ -51,7 +57,7 @@ for data in open('questions.txt', 'r'):
     category = prefix[0] + '_' + prefix[1]
     update_categories(category)
     question_X[question_id] = data[1].replace('\n', '').replace('`', '')
-    question_Y[question_id] = to_category_vector(category, target_catgories)
+    question_Y[question_id] = to_category_vector(category, target_categories)
     question_id += 1
 
 question_categories.sort_values(by='Type', ascending=True, inplace=True)
@@ -64,8 +70,7 @@ question_sentences = []
 
 
 def tokenize(sentence):
-    tokens = [lemmatizer.lemmatize(t.lower()) for t in tokenizer.tokenize(
-        sentence) if t.lower() not in stop_words]
+    tokens = sentence.replace('?', '').strip().lower().split()
     return tokens
 
 for key in question_X.keys():
@@ -73,13 +78,13 @@ for key in question_X.keys():
 
 word2vec_model = Word2Vec(question_sentences, size=500,
                           min_count=1, window=10, workers=5)
-word2vec_model.init_sims(replace=True)
 word2vec_model.save('questions.model')
 
-num_categories = len(target_catgories)
+num_categories = len(target_categories)
 num_of_questions = len(question_X)
+
 X = np.zeros(shape=(num_of_questions, 20, 500)).astype(float)
-Y = np.zeros(shape=(num_of_questions, num_categories)).astype(float)
+Y = np.zeros(shape=(num_of_questions, num_categories)).astype(int)
 empty_word = np.zeros(500).astype(float)
 
 for idx, question in enumerate(question_sentences):
@@ -99,7 +104,7 @@ X_train, X_test, Y_train, Y_test = train_test_split(X, Y, test_size=0.3)
 
 model = Sequential()
 
-model.add(LSTM(int(20 * 1.5), input_shape=(20, 500)))
+model.add(LSTM(128, input_shape=(20, 500)))
 model.add(Dropout(0.3))
 model.add(Dense(num_categories))
 model.add(Activation('sigmoid'))
@@ -107,10 +112,19 @@ model.add(Activation('sigmoid'))
 model.compile(loss='binary_crossentropy',
               optimizer='adam', metrics=['accuracy'])
 
-model.fit(X_train, Y_train, batch_size=10,
-          nb_epoch=5, validation_data=(X_test, Y_test))
-
-accuracy = model.evaluate(X_test, Y_test, batch_size=1)
-
-print()
-print(accuracy)
+model.fit(X_train, Y_train, batch_size=128, nb_epoch=5)
+test_question = input('Enter a question: ')
+test_question_X = np.zeros(shape=(1, 20, 500)).astype(float)
+for jdx, word in enumerate(test_question):
+    if jdx == 20:
+        break
+    else:
+        if word in word2vec_model:
+            test_question_X[0, jdx, :] = word2vec_model[word]
+        else:
+            test_question_X[0, jdx, :] = empty_word
+# vectors.append(model.predict_classes(test_question_X))
+print(model.predict_classes(test_question_X))
+# print(target_categories)
+# print(list(vector).index(max(vector)))
+# print(target_categories[list(vector).index(max(vector))])
