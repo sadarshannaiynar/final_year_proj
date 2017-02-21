@@ -29,6 +29,9 @@ to_idx = lambda x: [word2idx[word] for word in x]
 sentences_idx = [to_idx(sentence) for sentence in sentences_lemmatized]
 sentences_array = np.asarray(sentences_idx, dtype='int32')
 
+print(sentences_idx)
+print(sentences_array)
+
 # parameters for the model
 sentence_maxlen = 3
 n_words = len(words)
