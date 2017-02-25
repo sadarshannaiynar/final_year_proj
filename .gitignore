@@ -4,3 +4,5 @@
 *.pyc
 __pycache__/
 text8
+word2vec_models/
+model

@@ -8,10 +8,8 @@ from sklearn.model_selection import train_test_split
 categories = list()
 target_categories = list()
 question_sentences = list()
-max
 
-lemma = lambda x: x.lower().replace(
-    '\n', '').replace('`', '').replace('?', '').replace('', '').strip().split()
+lemma = lambda x: x.lower().replace(r"[`?\n]", '').strip().split()
 
 for data in open('questions.txt', 'r'):
     data = data.split(' ', 1)

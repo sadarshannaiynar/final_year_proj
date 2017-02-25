@@ -60,7 +60,8 @@ for data in open('questions.txt', 'r'):
     question_Y[question_id] = to_category_vector(category, target_categories)
     question_id += 1
 
-question_categories.sort_values(by='Type', ascending=True, inplace=True)
+question_categories.sort_values(by='Questions', ascending=True, inplace=True)
+print(question_categories)
 
 stop_words = set(stopwords.words('english'))
 tokenizer = RegexpTokenizer('[\'a-zA-Z]+')
