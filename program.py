@@ -29,5 +29,6 @@ def convert_pdf_to_txt(path):
 text1 = convert_pdf_to_txt('sample.pdf')
 print(text1)
 rake_object = rake.Rake("Stoplist.txt", 2, 8, 1)
-keywords = rake_object.run(text1)
+keywords = rake_object.run(
+    'Which NFL team represented the AFC at Super Bowl 50?')
 print("Keywords:", keywords)

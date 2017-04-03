@@ -1,6 +1,7 @@
 import numpy as np
 import re
 import itertools
+import json
 from collections import Counter
 
 lemma = lambda x: re.sub(r"[`?\n']", '', x.lower().strip()).split()
@@ -27,17 +28,6 @@ def read_and_format_input_and_output_data():
         i[0] = i[0].replace(':', '_')
         questions.append(lemma(i[1]))
         vectors.append(get_category_vector(categories, i[0], False))
-    #     if 'DESC:def' in i:
-    #         desc_definition_questions.append(lemma(i.split(' ', 1)[1]))
-    #     elif 'LOC:other' in i:
-    #         loc_other_questions.append(lemma(i.split(' ', 1)[1]))
-    #     elif 'NUM:count' in i:
-    #         num_count_questions.append(lemma(i.split(' ', 1)[1]))
-    # questions = desc_definition_questions + \
-    #     loc_other_questions + num_count_questions
-    # desc_labels = [[1, 0, 0] for i in desc_definition_questions]
-    # loc_labels = [[0, 1, 0] for i in loc_other_questions]
-    # num_labels = [[0, 0, 1] for i in num_count_questions]
     labels = np.asarray(vectors)
     return [questions, labels, categories]
 
@@ -52,28 +42,42 @@ def pad_questions(questions, padding_word='<PAD/>'):
     return [padded_questions, max_length]
 
 
-def build_vocabulary(questions):
+def build_vocabulary(questions, max_length):
     word_counts = Counter(itertools.chain(*questions))
     idx_to_word = [x[0] for x in word_counts.most_common()]
+    idx_to_word.append('<OTHER/>')
     word_to_idx = {x: i for i, x in enumerate(idx_to_word)}
+    word_to_idx["max_length"] = max_length
+    with open('vocab.json', 'w') as out:
+        json.dump(word_to_idx, out)
+    word_to_idx.pop("max_length")
+    with open('vocab_inv.json', 'w') as out:
+        json.dump(idx_to_word, out)
     return [word_to_idx, idx_to_word]
 
 
 def build_input_data(questions, labels, vocab):
-    X = np.array([[vocab[j] for j in i] for i in questions])
+    X = np.array([[vocab[j] if j in vocab else vocab['<OTHER/>']
+                   for j in i] for i in questions])
     Y = np.array(labels)
     return [X, Y]
 
 
+def build_document_data(document, vocab):
+    X = np.array([[vocab[j] for j in i] for i in document])
+    return X
+
+
 def get_question_vocab(question, vocab, max_length):
     question = question + ['<PAD/>'] * (max_length - len(question))
-    X = np.array([[vocab[i] if i in vocab else len(vocab) for i in question]])
+    X = np.array([[vocab[i] if i in vocab else vocab['<OTHER/>']
+                   for i in question]])
     return X
 
 
 def load_data():
     questions, labels, categories = read_and_format_input_and_output_data()
     questions_padded, max_length = pad_questions(questions)
-    vocab, vocab_inv = build_vocabulary(questions_padded)
+    vocab, vocab_inv = build_vocabulary(questions_padded, max_length)
     X, Y = build_input_data(questions_padded, labels, vocab)
     return [X, Y, vocab, vocab_inv, max_length, categories]
